@@ -10,22 +10,21 @@ pub fn process_instruction(
 
     let account_info_iter = &mut accounts.iter();
     let from = next_account_info(account_info_iter)?;
-    let token_account = next_account_info(account_info_iter)?;
-    let to = next_account_info(account_info_iter)?;
-    let owner = next_account_info(account_info_iter)?;
+    let from_token_account = next_account_info(account_info_iter)?;
+    let to_token_account = next_account_info(account_info_iter)?;
     let token_program = next_account_info(account_info_iter)?;
 
-    if !owner.is_signer {
-        return Err(ProgramError::InvalidSeeds);
+    if !from.is_signer {
+        return Err(ProgramError::MissingRequiredSignature);
     }
-    
+
     let instruction = transfer_checked(
         &token_program.key,
+        &from_token_account.key,
+        &token_program.key,
+        to_token_account.key,
         &from.key,
-        &token_account.key,
-        &to.key,
-        &owner.key,
-        &[&owner.key],
+        &[&from.key],
         1000000000,
         9
     );
@@ -36,10 +35,9 @@ pub fn process_instruction(
         &instruction.unwrap(),
         &[
             token_program.clone(),
+            from_token_account.clone(),
+            to_token_account.clone(),
             from.clone(),
-            token_account.clone(),
-            to.clone(),
-            owner.clone(),
         ]
     )?;
 

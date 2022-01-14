@@ -5,6 +5,7 @@ use solana_program::{
     program_pack::Pack,
     system_instruction::{self},
 };
+use solana_program::instruction::{AccountMeta, Instruction};
 use solana_program_test::*;
 use solana_sdk::{signature::Keypair, transaction::TransactionError, transport::TransportError};
 use spl_token::{error::TokenError, ui_amount_to_amount};
@@ -154,7 +155,9 @@ async fn test_transaction(){
         account_rent,
         &custom_token_mint.pubkey(),
         &pool_owner.pubkey(),
-    ).await.unwrap();
+    )
+        .await
+        .unwrap();
 
     create_token_account(
         &mut banks_client,
@@ -176,12 +179,28 @@ async fn test_transaction(){
         &custom_token_mint.pubkey(),
         &user_token_account.pubkey(),
         &custom_mint_authority
-    ).await.unwrap();
-
-    let tx = Transaction::new_signed_with_payer(
-        &T
     )
+        .await
+        .unwrap();
 
     println!("user token account {:?}", user_token_account);
     println!("custom token");
+
+    let mut transaction = Transaction::new_with_payer(
+        &[Instruction::new_with_bincode(
+            id(),
+            &(),
+            vec![
+                AccountMeta::new(custom_mint_authority.pubkey(), true),
+                AccountMeta::new(pool_custom_token_acc.pubkey(), false),
+                AccountMeta::new(user_token_account.pubkey(), false),
+                AccountMeta::new(custom_token_mint.pubkey(), false)
+            ]
+        )],
+      Some(&payer.pubkey())
+    );
+    transaction.sign(&[&payer, &custom_mint_authority], recent_blockhash);
+    banks_client.process_transaction(transaction).await.unwrap();
+
+
 }
