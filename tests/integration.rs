@@ -1,3 +1,4 @@
+use solana_program::instruction::{AccountMeta, Instruction};
 use solana_program::{
     hash::Hash,
     instruction::InstructionError,
@@ -5,16 +6,15 @@ use solana_program::{
     program_pack::Pack,
     system_instruction::{self},
 };
-use solana_program::instruction::{AccountMeta, Instruction};
 use solana_program_test::*;
 use solana_sdk::{signature::Keypair, transaction::TransactionError, transport::TransportError};
 use spl_token::{error::TokenError, ui_amount_to_amount};
+use transfer::entrypoint::process_instruction;
+use transfer::id;
 use {
     solana_program::pubkey::Pubkey,
     solana_sdk::{signature::Signer, transaction::Transaction},
 };
-use transfer::entrypoint::process_instruction;
-use transfer::id;
 
 async fn create_token_mint(
     banks_client: &mut BanksClient,
@@ -41,7 +41,7 @@ async fn create_token_mint(
                 None,
                 decimals,
             )
-                .unwrap(),
+            .unwrap(),
         ],
         Some(&payer.pubkey()),
     );
@@ -74,7 +74,7 @@ async fn create_token_account(
                 mint,
                 owner,
             )
-                .unwrap(),
+            .unwrap(),
         ],
         Some(&payer.pubkey()),
     );
@@ -101,7 +101,7 @@ async fn mint_token(
             &[],
             amount,
         )
-            .unwrap()],
+        .unwrap()],
         Some(&payer.pubkey()),
     );
     println!("transaction in {:?}", transaction);
@@ -111,7 +111,7 @@ async fn mint_token(
 }
 
 #[tokio::test]
-async fn test_transaction(){
+async fn test_transaction() {
     let program = ProgramTest::new("transfer", id(), processor!(process_instruction));
     let (mut banks_client, payer, recent_blockhash) = program.start().await;
 
@@ -119,7 +119,7 @@ async fn test_transaction(){
     let account_rent = rent.minimum_balance(spl_token::state::Account::LEN);
     let mint_rent = rent.minimum_balance(spl_token::state::Mint::LEN);
 
-    let custom_token_mint  = Keypair::new();
+    let custom_token_mint = Keypair::new();
     println!("{:?}", custom_token_mint);
     let custom_mint_authority = Keypair::new();
     println!("{:?}", custom_mint_authority);
@@ -134,7 +134,6 @@ async fn test_transaction(){
     let user_wallet = Keypair::new();
     let user_token_account = Keypair::new();
 
-
     create_token_mint(
         &mut banks_client,
         &payer,
@@ -142,10 +141,10 @@ async fn test_transaction(){
         mint_rent,
         decimals,
         &custom_token_mint,
-        &custom_mint_authority.pubkey()
+        &custom_mint_authority.pubkey(),
     )
-        .await
-        .unwrap();
+    .await
+    .unwrap();
 
     create_token_account(
         &mut banks_client,
@@ -156,8 +155,8 @@ async fn test_transaction(){
         &custom_token_mint.pubkey(),
         &pool_owner.pubkey(),
     )
-        .await
-        .unwrap();
+    .await
+    .unwrap();
 
     create_token_account(
         &mut banks_client,
@@ -168,8 +167,8 @@ async fn test_transaction(){
         &custom_token_mint.pubkey(),
         &user_wallet.pubkey(),
     )
-        .await
-        .unwrap();
+    .await
+    .unwrap();
 
     mint_token(
         &mut banks_client,
@@ -178,10 +177,10 @@ async fn test_transaction(){
         user_initial_token_amount,
         &custom_token_mint.pubkey(),
         &user_token_account.pubkey(),
-        &custom_mint_authority
+        &custom_mint_authority,
     )
-        .await
-        .unwrap();
+    .await
+    .unwrap();
 
     println!("user token account {:?}", user_token_account);
     println!("custom token");
@@ -191,16 +190,15 @@ async fn test_transaction(){
             id(),
             &(),
             vec![
-                AccountMeta::new(custom_mint_authority.pubkey(), true),
+                AccountMeta::new(pool_owner.pubkey(), true),
                 AccountMeta::new(pool_custom_token_acc.pubkey(), false),
                 AccountMeta::new(user_token_account.pubkey(), false),
-                AccountMeta::new(custom_token_mint.pubkey(), false)
-            ]
+                AccountMeta::new(custom_token_mint.pubkey(), false),
+                AccountMeta::new_readonly(spl_token::id(), false),
+            ],
         )],
-      Some(&payer.pubkey())
+        Some(&payer.pubkey()),
     );
-    transaction.sign(&[&payer, &custom_mint_authority], recent_blockhash);
+    transaction.sign(&[&payer, &pool_owner], recent_blockhash);
     banks_client.process_transaction(transaction).await.unwrap();
-
-
 }
